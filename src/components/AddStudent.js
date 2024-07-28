@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AddStudent = () => {
-const API_URL = 'http://localhost:5000';
   const [student, setStudent] = useState({
     name: '',
     email: '',
-    className: '',
-    subject: ''
+    batchId: ''
   });
+  const [batches, setBatches] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/batches')
+      .then(response => {
+        setBatches(response.data);
+      })
+      .catch(error => {
+        console.error('There was an error fetching the batches!', error);
+      });
+  }, []);
 
   const handleChange = (e) => {
     setStudent({
@@ -19,7 +28,7 @@ const API_URL = 'http://localhost:5000';
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post(`${API_URL}/add-student`, student)
+    axios.post('http://localhost:5000/add-student', student)
       .then(response => {
         alert('Student added successfully');
       })
@@ -28,30 +37,29 @@ const API_URL = 'http://localhost:5000';
       });
   };
 
-  return (<>
-  <div id="content-wrapper" className="d-flex flex-column">
-    <div id="content">
+  return (
+    <div id="content-wrapper" className="d-flex flex-column">
+      <div id="content">
         <div className="container-fluid">
-            <div className="d-sm-flex align-items-center justify-content-between mb-4">
-                <h1 className="h3 mb-0 text-gray-800">AddStudent</h1>                                               
-            </div>
-            <div className="row">
-                <form onSubmit={handleSubmit}>
-                        <input type="text" name="name" placeholder="Name" onChange={handleChange} />
-                        <input type="email" name="email" placeholder="Email" onChange={handleChange} />
-                        <input type="text" name="className" placeholder="Class" onChange={handleChange} />
-                        <input type="text" name="subject" placeholder="Subject" onChange={handleChange} />
-                        <button type="submit">Add Student</button>
-                </form> 
-            </div>
+          <div className="d-sm-flex align-items-center justify-content-between mb-4">
+            <h1 className="h3 mb-0 text-gray-800">Add Student</h1>
+          </div>
+          <div className="row">
+            <form onSubmit={handleSubmit}>
+              <input type="text" name="name" placeholder="Name" onChange={handleChange} />
+              <input type="email" name="email" placeholder="Email" onChange={handleChange} />
+              <select name="batchId" onChange={handleChange}>
+                <option value="">Select Batch</option>
+                {batches.map(batch => (
+                  <option key={batch.id} value={batch.id}>{batch.name} - {batch.class} - {batch.subject}</option>
+                ))}
+              </select>
+              <button type="submit">Add Student</button>
+            </form>
+          </div>
         </div>
+      </div>
     </div>
-      
-      
-    </div>
-
-  </>
-    
   );
 };
 

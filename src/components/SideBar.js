@@ -2,18 +2,21 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const SideBar = () => {
+  const sidebarStyle = {
+    backgroundColor: '#ff7217', // Replace with your desired color
+  };
   return (
     // Enclose everything in a single parent element
-    <div>
+    <div >
       {/* <!-- Sidebar --> */}
       <ul className="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
         {/* <!-- Sidebar - Brand --> */}
-        <a className="sidebar-brand d-flex align-items-center justify-content-center" href="index.html">
+        <a className="sidebar-brand d-flex align-items-center justify-content-center" style={sidebarStyle} href="index.html">
           <div className="sidebar-brand-icon rotate-n-15">
             <i className="fas fa-laugh-wink"></i>
           </div>
-          <div className="sidebar-brand-text mx-3">SB Admin <sup>2</sup></div>
+          <div className="sidebar-brand-text mx-3">EEA Admin <sup>2</sup></div>
         </a>
 
         {/* <!-- Divider --> */}
@@ -64,6 +67,19 @@ const SideBar = () => {
                 <i className="fas fa-fw fa-chart-area"></i>
                 <span>Attendance Report</span>
             </Link>
+        </li>
+
+        <li className="nav-item">
+          <Link to="/manage-batches" className="nav-link collapsed">
+            <i className="fas fa-fw fa-wrench"></i>
+            <span>Manage Batches</span>
+          </Link>         
+        </li>
+        <li className="nav-item">
+          <Link to="/link-student-batch" className="nav-link collapsed">
+            <i className="fas fa-fw fa-wrench"></i>
+            <span>Link Student to Batch</span>
+          </Link>         
         </li>
 
         

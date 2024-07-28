@@ -5,6 +5,9 @@ import SideBar from './components/SideBar';
 import './index.css';
 import AttendanceReport from './components/AttendanceReport';
 
+import ManageBatches from './components/ManageBatches';
+import LinkStudentBatch from './components/LinkStudentBatch';
+
 const App = () => {
   return (<>
       <div id="wrapper">
@@ -16,6 +19,8 @@ const App = () => {
                 <Route path="/add-student" element={<AddStudent />} />
                 <Route path="/update-attendance" element={<UpdateAttendance />} />
                 <Route path="/attendance-report" element={<AttendanceReport />} />
+                <Route path="/manage-batches" element={<ManageBatches />} />
+                <Route path="/link-student-batch" element={<LinkStudentBatch />} />
               </Routes>
         </BrowserRouter>
 

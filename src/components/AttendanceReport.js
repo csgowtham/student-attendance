@@ -1,61 +1,90 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const AttendanceReport = () => {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [reports, setReports] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState('');
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [report, setReport] = useState([]);
 
-  const handleStartDateChange = (e) => setStartDate(e.target.value);
-  const handleEndDateChange = (e) => setEndDate(e.target.value);
+  useEffect(() => {
+    axios.get('http://localhost:5000/batches')
+      .then(response => {
+        setBatches(response.data);
+      })
+      .catch(error => {
+        console.error('There was an error fetching the batches!', error);
+      });
+  }, []);
 
-  const fetchReports = () => {
-    axios.get('http://localhost:5000/attendance', {
+  const formatDate = (date) => {
+    const d = new Date(date);
+    const month = `${d.getMonth() + 1}`.padStart(2, '0');
+    const day = `${d.getDate()}`.padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
+  const fetchReport = () => {
+    axios.get(`http://localhost:5000/attendance-report`, {
       params: {
-        startDate,
-        endDate
+        batchId: selectedBatch,
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
       }
     })
-    .then(response => {
-      setReports(response.data);
-    })
-    .catch(error => {
-      console.error('There was an error fetching the attendance report!', error);
-    });
+      .then(response => {
+        setReport(response.data);
+      })
+      .catch(error => {
+        console.error('There was an error fetching the attendance report!', error);
+      });
   };
 
   return (
-    <div id="content-wrapper" className="d-flex flex-column">
-      <div id="content">
-        <div className="container-fluid">
-          <div className="d-sm-flex align-items-center justify-content-between mb-4">
-            <h1 className="h3 mb-0 text-gray-800">Attendance Report</h1>
-          </div>
-          <div className="row">
-            <div>
-              <label>
-                Start Date:
-                <input type="date" value={startDate} onChange={handleStartDateChange} />
-              </label>
-              <label>
-                End Date:
-                <input type="date" value={endDate} onChange={handleEndDateChange} />
-              </label>
-              <button onClick={fetchReports}>Get Report</button>
-            </div>
-            <div>
-              <h2>Attendance Report</h2>
-              <ul>
-                {reports.map((report, index) => (
-                  <li key={index}>
-                    {report.date} - Student ID: {report.student_id}, Status: {report.status}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div>
+      <h2>Attendance Report</h2>
+      <label>Select Batch:</label>
+      <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)}>
+        <option value="">Select a batch</option>
+        {batches.map(batch => (
+          <option key={batch.id} value={batch.id}>{batch.name} - {batch.class} - {batch.subject}</option>
+        ))}
+      </select>
+      <br />
+      <label>Start Date:</label>
+      <DatePicker selected={startDate} onChange={date => setStartDate(date)} />
+      <br />
+      <label>End Date:</label>
+      <DatePicker selected={endDate} onChange={date => setEndDate(date)} />
+      <br />
+      <button onClick={fetchReport}>Get Report</button>
+
+      {report.length === 0 ? (
+        <p>No attendance data found for the selected batch and date range.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Student Name</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.map((entry, index) => (
+              <tr key={index}>
+                <td>{entry.date}</td>
+                <td>{entry.name}</td>
+                <td>{entry.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

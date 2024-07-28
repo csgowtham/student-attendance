@@ -19,12 +19,44 @@ db.connect(err => {
   console.log('MySQL connected...');
 });
 
-app.post('/add-student', (req, res) => {
-  const { name, email, className, subject } = req.body;
-  const sql = 'INSERT INTO students (name, email, class, subject) VALUES (?, ?, ?, ?)';
-  db.query(sql, [name, email, className, subject], (err, result) => {
+app.post('/add-batch', (req, res) => {
+  const { name, class: className, subject, faculty } = req.body;
+  const sql = 'INSERT INTO batches (name, class, subject, faculty) VALUES (?, ?, ?, ?)';
+  db.query(sql, [name, className, subject, faculty], (err, result) => {
     if (err) throw err;
-    res.send('Student added...');
+    res.send('Batch added...');
+  });
+});
+
+app.get('/batches', (req, res) => {
+  const sql = 'SELECT * FROM batches';
+  db.query(sql, (err, results) => {
+    if (err) throw err;
+    res.send(results);
+  });
+});
+
+app.get('/batches/:batchId/students', (req, res) => {
+  const { batchId } = req.params;
+  const sql = `
+    SELECT s.id, s.name, s.email
+    FROM students s
+    INNER JOIN batch_students bs ON s.id = bs.student_id
+    WHERE bs.batch_id = ?
+  `;
+  db.query(sql, [batchId], (err, results) => {
+    if (err) throw err;
+    res.send(results);
+  });
+});
+
+app.put('/update-batch/:id', (req, res) => {
+  const { name, className, subject, faculty } = req.body;
+  const { id } = req.params;
+  const sql = 'UPDATE batches SET name = ?, class = ?, subject = ?, faculty = ? WHERE id = ?';
+  db.query(sql, [name, className, subject, faculty, id], (err, result) => {
+    if (err) throw err;
+    res.send('Batch updated...');
   });
 });
 
@@ -37,29 +69,128 @@ app.get('/students', (req, res) => {
 });
 
 app.post('/attendance', (req, res) => {
-  const { date, attendance } = req.body;
+  const { date, attendance, batchId } = req.body;
   attendance.forEach(record => {
-    const sql = 'INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)';
-    db.query(sql, [record.studentId, date, record.status], (err, result) => {
+    const sql = 'INSERT INTO attendance (student_id, date, status, batch_id) VALUES (?, ?, ?, ?)';
+    db.query(sql, [record.studentId, date, record.status, batchId], (err, result) => {
       if (err) throw err;
     });
   });
   res.send('Attendance recorded...');
 });
 
-app.listen(5000, () => {
-  console.log('Server running on port 5000');
+
+app.delete('/delete-batch/:id', (req, res) => {
+  const { id } = req.params;
+  const sql = 'DELETE FROM batches WHERE id = ?';
+  db.query(sql, [id], (err, result) => {
+    if (err) throw err;
+    res.send('Batch deleted...');
+  });
 });
 
-app.get('/attendance', (req, res) => {
-  const { startDate, endDate } = req.query;
-  const sql = 'SELECT * FROM attendance WHERE date BETWEEN ? AND ?';
-  db.query(sql, [startDate, endDate], (err, results) => {
-    if (err) {
-      console.error('Error fetching attendance:', err);
-      res.status(500).send('Internal Server Error');
-    } else {
-      res.json(results); // Ensure the response is JSON
-    }
+// Link students to batches
+app.post('/link-student-batch', (req, res) => {
+  const { studentId, batchId } = req.body;
+  const sql = 'INSERT INTO batch_students (student_id, batch_id) VALUES (?, ?)';
+  db.query(sql, [studentId, batchId], (err, result) => {
+    if (err) throw err;
+    res.send('Student linked to batch...');
   });
+});
+app.post('/add-student', (req, res) => {
+  const { name, email, batchId } = req.body;
+  const sql = 'INSERT INTO students (name, email) VALUES (?, ?)';
+  db.query(sql, [name, email], (err, result) => {
+    if (err) throw err;
+    const studentId = result.insertId;
+    const sql2 = 'INSERT INTO batch_students (student_id, batch_id) VALUES (?, ?)';
+    db.query(sql2, [studentId, batchId], (err, result) => {
+      if (err) throw err;
+      res.send('Student added...');
+    });
+  });
+});
+
+app.get('/attendance-report', (req, res) => {
+  const { batchId, startDate, endDate } = req.query;
+
+  const sql = `
+    SELECT a.date, s.name, a.status 
+    FROM attendance a
+    JOIN batch_students bs ON a.student_id = bs.student_id
+    JOIN students s ON s.id = a.student_id
+    WHERE bs.batch_id = ? AND a.date BETWEEN ? AND ?
+  `;
+
+  db.query(sql, [batchId, startDate, endDate], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send('Server error');
+      return;
+    }
+    res.json(results);
+  });
+});
+
+
+// Assuming you have the necessary imports and setup here
+
+app.get('/batch-students/:batchId', (req, res) => {
+  const { batchId } = req.params;
+  const { date } = req.query;
+
+  const sql = `
+    SELECT s.id, s.name, a.status
+    FROM students s
+    LEFT JOIN attendance a ON s.id = a.student_id AND a.date = ?
+    JOIN batch_students bs ON s.id = bs.student_id
+    WHERE bs.batch_id = ?
+  `;
+
+  db.query(sql, [date, batchId], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send('Server error');
+      return;
+    }
+    res.json(results);
+  });
+});
+
+app.post('/update-attendance', (req, res) => {
+  const { batchId, date, attendance } = req.body;
+
+  const attendanceData = Object.keys(attendance).map(studentId => ({
+    student_id: studentId,
+    batch_id: batchId,
+    date,
+    status: attendance[studentId],
+  }));
+
+  const sqlDelete = 'DELETE FROM attendance WHERE batch_id = ? AND date = ?';
+  db.query(sqlDelete, [batchId, date], (err, result) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send('Server error');
+      return;
+    }
+
+    const sqlInsert = 'INSERT INTO attendance (student_id, batch_id, date, status) VALUES ?';
+    const values = attendanceData.map(row => [row.student_id, row.batch_id, row.date, row.status]);
+
+    db.query(sqlInsert, [values], (err, result) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+        return;
+      }
+      res.send({ message: 'Attendance updated successfully' });
+    });
+  });
+});
+
+
+app.listen(5000, () => {
+  console.log('Server running on port 5000');
 });
